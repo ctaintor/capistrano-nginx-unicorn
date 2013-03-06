@@ -56,7 +56,11 @@ Capistrano::Configuration.instance.load do
       template "unicorn_init.erb", "/tmp/unicorn_init"
       run "chmod +x /tmp/unicorn_init"
       run "#{sudo} mv /tmp/unicorn_init /etc/init.d/unicorn_#{application}"
-      run "#{sudo} update-rc.d -f unicorn_#{application} defaults"
+      if capture("if [ -e /etc/redhat-release ]; then echo 'true'; fi").strip == "true"
+        run "#{sudo} /sbin/chkconfig --add unicorn_#{application}"
+      else
+        run "#{sudo} update-rc.d -f unicorn_#{application} defaults"
+      end
     end
 
     after "deploy:setup", "unicorn:setup"

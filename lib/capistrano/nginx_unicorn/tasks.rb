@@ -9,30 +9,40 @@ Capistrano::Configuration.instance.load do
 
   set_default(:nginx_server_name) { Capistrano::CLI.ui.ask "Nginx server name: " }
   set_default(:nginx_use_ssl, false)
+  set_default(:nginx_pid) { "/run/nginx.pid" }
   set_default(:nginx_ssl_certificate) { "#{nginx_server_name}.crt" }
   set_default(:nginx_ssl_certificate_key) { "#{nginx_server_name}.key" }
+  set_default(:nginx_upload_local_certificate) { true }
   set_default(:nginx_ssl_certificate_local_path) {Capistrano::CLI.ui.ask "Local path to ssl certificate: "}
   set_default(:nginx_ssl_certificate_key_local_path) {Capistrano::CLI.ui.ask "Local path to ssl certificate key: "}
 
-  set_default(:unicorn_pid, "#{current_path}/tmp/pids/unicorn.pid")
-  set_default(:unicorn_config, "#{shared_path}/config/unicorn.rb")
-  set_default(:unicorn_log, "#{shared_path}/log/unicorn.log")
-  set_default(:unicorn_user, user)
+  set_default(:unicorn_pid) { "#{current_path}/tmp/pids/unicorn.pid" }
+  set_default(:unicorn_config) { "#{shared_path}/config/unicorn.rb" }
+  set_default(:unicorn_log) { "#{shared_path}/log/unicorn.log" }
+  set_default(:unicorn_user) { user }
   set_default(:unicorn_workers) { Capistrano::CLI.ui.ask "Number of unicorn workers: " }
+  
+  set_default(:nginx_config_path) { "/etc/nginx/sites-available" }
 
   namespace :nginx do
     desc "Setup nginx configuration for this application"
     task :setup, roles: :web do
       template("nginx_conf.erb", "/tmp/#{application}")
-      run "#{sudo} mv /tmp/#{application} /etc/nginx/sites-available/#{application}"
-      run "#{sudo} ln -fs /etc/nginx/sites-available/#{application} /etc/nginx/sites-enabled/#{application}"
+      if nginx_config_path == "/etc/nginx/sites-available"
+          run "#{sudo} mv /tmp/#{application} /etc/nginx/sites-available/#{application}"
+          run "#{sudo} ln -fs /etc/nginx/sites-available/#{application} /etc/nginx/sites-enabled/#{application}"
+      else
+          run "#{sudo} mv /tmp/#{application} #{nginx_config_path}/#{application}.conf"
+      end
 
       if nginx_use_ssl
-        put File.read(nginx_ssl_certificate_local_path), "/tmp/#{nginx_ssl_certificate}"
-        put File.read(nginx_ssl_certificate_key_local_path), "/tmp/#{nginx_ssl_certificate_key}"
+        if nginx_upload_local_certificate
+          put File.read(nginx_ssl_certificate_local_path), "/tmp/#{nginx_ssl_certificate}"
+          put File.read(nginx_ssl_certificate_key_local_path), "/tmp/#{nginx_ssl_certificate_key}"
 
-        run "#{sudo} mv /tmp/#{nginx_ssl_certificate} /etc/ssl/certs/#{nginx_ssl_certificate}"
-        run "#{sudo} mv /tmp/#{nginx_ssl_certificate_key} /etc/ssl/private/#{nginx_ssl_certificate_key}"
+          run "#{sudo} mv /tmp/#{nginx_ssl_certificate} /etc/ssl/certs/#{nginx_ssl_certificate}"
+          run "#{sudo} mv /tmp/#{nginx_ssl_certificate_key} /etc/ssl/private/#{nginx_ssl_certificate_key}"
+        end
 
         run "#{sudo} chown root:root /etc/ssl/certs/#{nginx_ssl_certificate}"
         run "#{sudo} chown root:root /etc/ssl/private/#{nginx_ssl_certificate_key}"

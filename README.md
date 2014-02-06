@@ -64,7 +64,7 @@ and for unicorn:
     # reload unicorn with no downtime
     # old workers will process new request until new master is fully loaded
     # then old workers will be automatically killed and new workers will start processing requests
-    cap unicorn:reload
+    cap unicorn:restart
 
 and shared:
 
@@ -105,6 +105,10 @@ set :nginx_server_name, "example.com"
 # default value: `"#{current_path}/tmp/pids/unicorn.pid"`
 set :unicorn_pid, "#{current_path}/tmp/pids/unicorn.pid"
 
+# path, where nginx pid file will be stored (used in logrotate recipe)
+# default value: `"/run/nginx.pid"`
+set :nginx_pid, "/run/nginx.pid"
+
 # path, where unicorn config file will be stored
 # default value: `"#{shared_path}/config/unicorn.rb"`
 set :unicorn_config, "#{shared_path}/config/unicorn.rb"
@@ -126,6 +130,10 @@ set :unicorn_workers, 4
 # and certificate file and key will be copied to `/etc/ssl/certs` and `/etc/ssl/private/` directories
 # default value: false
 set :nginx_use_ssl, false
+
+# if set, it will ask to upload certificates from a local path. Otherwise, it will expect
+# the certificate and key defined in the next 2 variables to be already in the server.
+set :nginx_upload_local_certificate, { true }
 
 # remote file name of the certificate, only makes sense if `nginx_use_ssl` is set
 # default value: `nginx_server_name + ".crt"`
